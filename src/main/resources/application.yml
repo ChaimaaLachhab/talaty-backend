@@ -1,0 +1,92 @@
+spring:
+  application:
+    name: talaty
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/talaty_db?createDatabaseIfNotExist=true
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MariaDBDialect
+        format_sql: true
+
+  sql:
+    init:
+      platform: mysql
+
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  web:
+    cors:
+      allowed-origins: ${FRONTEND_URL}
+      allowed-methods: "GET, POST, PUT, DELETE, OPTIONS"
+      allowed-headers: "Authorization, Content-MediaType"
+      allow-credentials: true
+
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# Cloudinary Configuration
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
+
+# JWT Configuration
+security:
+  jwt:
+    secret-key: ${JWT_SECRET}
+    expiration-time: ${JWT_EXPIRATION}
+
+# OTP Configuration
+otp:
+  expiration-minutes: ${OTP_EXPIRATION}
+  length: ${OTP_LENGTH}
+
+# Email Verification
+email:
+  verification:
+    expiration-hours: ${EMAIL_VERIFICATION_EXPIRATION:}
+
+# Application Settings
+app:
+  frontend-url: ${FRONTEND_URL}
+  max-login-attempts: ${MAX_LOGIN_ATTEMPTS}
+  lockout-duration-minutes: ${LOCKOUT_DURATION}
+
+# Swagger/OpenAPI Configuration
+#springdoc:
+#  api-docs:
+#    path: /api-docs
+#  swagger-ui:
+#    path: /swagger-ui.html
+#    operationsSorter: method
+
+server:
+  port: ${SERVER_PORT}
+
+logging:
+  level:
+    com.talaty: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
