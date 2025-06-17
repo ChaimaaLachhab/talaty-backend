@@ -13,22 +13,10 @@ import java.util.Optional;
 
 @Repository
 public interface EKYCRepository extends JpaRepository<EKYC, Long> {
-    Optional<EKYC> findByNationalId(String nationalId);
-    Optional<EKYC> findByCompanyRegistrationNumber(String registrationNumber);
-
+    Optional<EKYC> findByUser_Id(Long userId);
+    List<EKYC> findByStatusIn(List<ApplicationStatus> statuses);
     List<EKYC> findByStatus(ApplicationStatus status);
     List<EKYC> findByStatusOrderBySubmittedAtDesc(ApplicationStatus status);
-
-    @Query("SELECT e FROM EKYC e WHERE e.score >= :minScore")
-    List<EKYC> findByScoreGreaterThanEqual(@Param("minScore") Integer minScore);
-
-    @Query("SELECT e FROM EKYC e WHERE e.submittedAt BETWEEN :startDate AND :endDate")
-    List<EKYC> findBySubmittedAtBetween(@Param("startDate") LocalDateTime startDate,
-                                        @Param("endDate") LocalDateTime endDate);
-
-    @Query("SELECT COUNT(e) FROM EKYC e WHERE e.status = :status")
-    Long countByStatus(@Param("status") ApplicationStatus status);
-
-    @Query("SELECT AVG(e.score) FROM EKYC e WHERE e.status = 'APPROVED'")
-    Double getAverageScoreForApproved();
+    @Query("SELECT e FROM EKYC e WHERE e.status = :status AND e.submittedAt IS NOT NULL ORDER BY e.submittedAt DESC")
+    List<EKYC> findSubmittedByStatus(@Param("status") ApplicationStatus status);
 }

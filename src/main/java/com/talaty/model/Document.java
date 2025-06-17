@@ -46,8 +46,7 @@ public class Document {
     private boolean dataExtracted = false;
     private LocalDateTime dataExtractedAt;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinColumn(name = "document_id")
+    @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Media> mediaFiles = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -66,7 +65,8 @@ public class Document {
         media.setDocument(this);
     }
 
-    public boolean hasMediaFiles() {
-        return !mediaFiles.isEmpty();
+    public void removeMediaFile(Media media) {
+        mediaFiles.remove(media);
+        media.setDocument(null);
     }
 }

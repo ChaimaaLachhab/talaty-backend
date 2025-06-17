@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -16,8 +17,6 @@ import java.util.List;
 public class EKYCResponseDto {
     private Long id;
     private String nationalId;
-
-    // Business Information
     private String companyName;
     private String businessSector;
     private String businessPurpose;
@@ -25,47 +24,24 @@ public class EKYCResponseDto {
     private String city;
     private String country;
     private String postalCode;
-
-    // Registration Information
     private String companyRegistrationNumber;
-    private LocalDateTime companyEstablishedDate;
-
-    // Banking Information
+    private LocalDate companyEstablishedDate;
     private String bankAccountNumber;
     private String bankName;
-
-    // Financial Information
     private Double monthlyRevenue;
     private Double annualRevenue;
     private Integer numberOfEmployees;
-
-    // Credit Application
     private Double requestedCreditAmount;
     private String creditPurpose;
-
-    // Status and Scoring
     private ApplicationStatus status;
     private Integer score;
     private Integer maxScore;
     private Double scorePercentage;
-
-    // Documents
-    private List<DocumentResponseDto> documents;
-
-    // Processing Information
     private String reviewComments;
     private LocalDateTime submittedAt;
     private LocalDateTime reviewedAt;
     private Long reviewedBy;
-
-    // Progress tracking
-    private boolean nationalIdVerified;
-    private boolean companyDocumentsSubmitted;
-    private boolean bankStatementsSubmitted;
-    private boolean identityVerified;
-    private boolean phoneVerified;
-    private boolean emailVerified;
-
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private List<DocumentResponseDto> documents;
 }

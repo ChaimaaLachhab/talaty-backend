@@ -1,26 +1,24 @@
 package com.talaty.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.talaty.dto.ApiResponse;
 import com.talaty.dto.request.DocumentUploadDto;
 import com.talaty.dto.response.DocumentResponseDto;
 import com.talaty.mapper.DocumentMapper;
-import com.talaty.model.Customer;
 import com.talaty.model.Document;
 import com.talaty.model.EKYC;
 import com.talaty.model.Media;
-import com.talaty.repository.CustomerRepository;
 import com.talaty.repository.DocumentRepository;
 import com.talaty.repository.EKYCRepository;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,277 +26,141 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DocumentService {
 
-    @Autowired
-    private DocumentRepository documentRepository;
+    private final DocumentRepository documentRepository;
+    private final EKYCRepository ekycRepository;
+    private final MediaService mediaService;
+    private final DocumentMapper documentMapper;
 
-    @Autowired
-    private EKYCRepository ekycRepository;
+    public DocumentService(DocumentRepository documentRepository,
+                           EKYCRepository ekycRepository,
+                           MediaService mediaService,
+                           DocumentMapper documentMapper) {
+        this.documentRepository = documentRepository;
+        this.ekycRepository = ekycRepository;
+        this.mediaService = mediaService;
+        this.documentMapper = documentMapper;
+    }
 
-    @Autowired
-    private MediaService mediaService;
-
-    @Autowired
-    private EKYCService ekycService;
-
-    @Autowired
-    private NotificationService notificationService;
-
-    @Autowired
-    private DocumentMapper documentMapper;
-
-    @Autowired
-    private CustomerRepository customerRepository;
-
-    public ApiResponse<DocumentResponseDto> createDocument(Long ekycId, DocumentUploadDto request) {
+    public ApiResponse<DocumentResponseDto> uploadDocument(Long userId, DocumentUploadDto request,
+                                                           List<MultipartFile> files) {
         try {
-            Optional<EKYC> ekycOpt = ekycRepository.findById(ekycId);
-            if (ekycOpt.isEmpty()) {
-                return ApiResponse.error("eKYC not found");
+            // Vérifier eKYC
+            EKYC ekyc = ekycRepository.findById(request.getEkycId())
+                    .orElseThrow(() -> new RuntimeException("eKYC non trouvé"));
+
+            if (!ekyc.getUser().getId().equals(userId)) {
+                return ApiResponse.error("Accès non autorisé à cet eKYC");
             }
 
-            EKYC ekyc = ekycOpt.get();
+            // Créer ou récupérer document existant
+            Document document = documentRepository.findByEkyc_IdAndType(request.getEkycId(), request.getDocumentType())
+                    .stream().findFirst()
+                    .orElse(new Document());
 
-            // Check if document of this type already exists
-            Optional<Document> existingDoc = documentRepository.findByEkycIdAndType(ekycId, request.getType());
-            if (existingDoc.isPresent()) {
-                return ApiResponse.error("Document of this type already exists for this eKYC");
+            // Mapper les données du DTO vers l'entité
+            if (document.getId() == null) {
+                document = documentMapper.toEntity(request);
+                document.setEkyc(ekyc);
+            } else {
+                documentMapper.partialUpdate(request, document);
             }
 
-            Document document = new Document();
-            document.setType(request.getType());
-            document.setName(request.getName());
-            document.setDescription(request.getDescription());
-            document.setEkyc(ekyc);
+            // Sauvegarder document
+            Document savedDocument = documentRepository.save(document);
 
-            document = documentRepository.save(document);
+            // Upload des fichiers via MediaService existant
+            List<Media> uploadedMedia = mediaService.addMediaToDocument(files, savedDocument.getId());
 
-            DocumentResponseDto response = documentMapper.toDto(document);
-            return ApiResponse.success("Document created successfully", response);
+            // Simulation extraction de données pour chaque fichier
+            for (Media media : uploadedMedia) {
+                extractDataFromFile(savedDocument, media);
+            }
+
+            documentRepository.save(savedDocument);
+            log.info("Document {} uploadé pour eKYC {}", request.getDocumentType(), request.getEkycId());
+
+            return ApiResponse.success(documentMapper.toDto(savedDocument), "Document uploadé avec succès");
 
         } catch (Exception e) {
-            log.error("Document creation failed", e);
-            return ApiResponse.error("Document creation failed: " + e.getMessage());
+            log.error("Erreur lors de l'upload du document", e);
+            return ApiResponse.error("Erreur lors de l'upload: " + e.getMessage());
         }
     }
 
-    public ApiResponse<DocumentResponseDto> uploadDocumentFiles(Long documentId, List<MultipartFile> files) {
+    public ApiResponse<List<DocumentResponseDto>> getDocumentsByEKYC(Long userId, Long ekycId) {
         try {
-            Optional<Document> documentOpt = documentRepository.findById(documentId);
-            if (documentOpt.isEmpty()) {
-                return ApiResponse.error("Document not found");
+            // Vérifier propriétaire
+            EKYC ekyc = ekycRepository.findById(ekycId)
+                    .orElseThrow(() -> new RuntimeException("eKYC non trouvé"));
+
+            if (!ekyc.getUser().getId().equals(userId)) {
+                return ApiResponse.error("Accès non autorisé");
             }
 
-            Document document = documentOpt.get();
-
-            // Use MediaService to upload multiple files to the document
-            List<Media> uploadedMedia = mediaService.addMediaToDocument(files, documentId);
-
-            if (uploadedMedia.isEmpty()) {
-                return ApiResponse.error("No files were uploaded successfully");
-            }
-
-            // Refresh document to get updated media files
-            document = documentRepository.findById(documentId).orElse(document);
-
-            // Recalculate eKYC score
-            ekycService.calculateAndUpdateScore(document.getEkyc().getId());
-
-            DocumentResponseDto response = documentMapper.toDto(document);
-            return ApiResponse.success("Files uploaded successfully", response);
-
-        } catch (EntityNotFoundException e) {
-            log.error("Entity not found during file upload", e);
-            return ApiResponse.error("Document not found: " + e.getMessage());
-        } catch (Exception e) {
-            log.error("File upload failed", e);
-            return ApiResponse.error("File upload failed: " + e.getMessage());
-        }
-    }
-
-    public ApiResponse<DocumentResponseDto> uploadSingleDocumentFile(Long documentId, MultipartFile file) {
-        try {
-            Optional<Document> documentOpt = documentRepository.findById(documentId);
-            if (documentOpt.isEmpty()) {
-                return ApiResponse.error("Document not found");
-            }
-
-            Document document = documentOpt.get();
-
-            // Use MediaService to upload single file to the document
-            Media uploadedMedia = mediaService.addSingleMediaToDocument(file, documentId);
-
-            // Refresh document to get updated media files
-            document = documentRepository.findById(documentId).orElse(document);
-
-            // Recalculate eKYC score
-            ekycService.calculateAndUpdateScore(document.getEkyc().getId());
-
-            DocumentResponseDto response = documentMapper.toDto(document);
-            return ApiResponse.success("File uploaded successfully", response);
-
-        } catch (EntityNotFoundException e) {
-            log.error("Entity not found during file upload", e);
-            return ApiResponse.error("Document not found: " + e.getMessage());
-        } catch (Exception e) {
-            log.error("File upload failed", e);
-            return ApiResponse.error("File upload failed: " + e.getMessage());
-        }
-    }
-
-    public ApiResponse<String> removeMediaFromDocument(Long documentId, Long mediaId) {
-        try {
-            mediaService.removeMediaFromDocument(mediaId, documentId);
-
-            // Refresh document and recalculate eKYC score
-            Optional<Document> documentOpt = documentRepository.findById(documentId);
-            if (documentOpt.isPresent()) {
-                ekycService.calculateAndUpdateScore(documentOpt.get().getEkyc().getId());
-            }
-
-            return ApiResponse.success("Media removed successfully");
-
-        } catch (EntityNotFoundException e) {
-            log.error("Entity not found during media removal", e);
-            return ApiResponse.error("Document or media not found: " + e.getMessage());
-        } catch (IllegalStateException e) {
-            log.error("Illegal state during media removal", e);
-            return ApiResponse.error(e.getMessage());
-        } catch (Exception e) {
-            log.error("Media removal failed", e);
-            return ApiResponse.error("Media removal failed: " + e.getMessage());
-        }
-    }
-
-    public ApiResponse<DocumentResponseDto> replaceMediaInDocument(Long documentId, Long mediaId, MultipartFile newFile) {
-        try {
-            Media replacedMedia = mediaService.replaceMediaInDocument(newFile, mediaId, documentId);
-
-            // Refresh document and recalculate eKYC score
-            Optional<Document> documentOpt = documentRepository.findById(documentId);
-            if (documentOpt.isEmpty()) {
-                return ApiResponse.error("Document not found");
-            }
-
-            Document document = documentOpt.get();
-            ekycService.calculateAndUpdateScore(document.getEkyc().getId());
-
-            DocumentResponseDto response = documentMapper.toDto(document);
-            return ApiResponse.success("Media replaced successfully", response);
-
-        } catch (EntityNotFoundException e) {
-            log.error("Entity not found during media replacement", e);
-            return ApiResponse.error("Document or media not found: " + e.getMessage());
-        } catch (IllegalStateException e) {
-            log.error("Illegal state during media replacement", e);
-            return ApiResponse.error(e.getMessage());
-        } catch (Exception e) {
-            log.error("Media replacement failed", e);
-            return ApiResponse.error("Media replacement failed: " + e.getMessage());
-        }
-    }
-
-    public ApiResponse<List<DocumentResponseDto>> getDocumentsByEKYC(Long ekycId) {
-        try {
-            List<Document> documents = documentRepository.findByEkycId(ekycId);
-            List<DocumentResponseDto> responses = documents.stream()
+            List<Document> documents = documentRepository.findByEkyc_Id(ekycId);
+            List<DocumentResponseDto> documentsDto = documents.stream()
                     .map(documentMapper::toDto)
                     .collect(Collectors.toList());
 
-            return ApiResponse.success(responses);
+            return ApiResponse.success(documentsDto, "Documents récupérés avec succès");
 
         } catch (Exception e) {
-            log.error("Failed to get documents", e);
-            return ApiResponse.error("Failed to get documents: " + e.getMessage());
+            log.error("Erreur lors de la récupération des documents", e);
+            return ApiResponse.error("Erreur lors de la récupération: " + e.getMessage());
         }
     }
 
-    public ApiResponse<List<Media>> getDocumentMedia(Long documentId) {
-        try {
-            List<Media> mediaFiles = mediaService.getDocumentMedia(documentId);
-            return ApiResponse.success("Media files retrieved successfully", mediaFiles);
+    private void extractDataFromFile(Document document, Media media) {
+        // Simulation extraction de données selon le type
+        Map<String, Object> extractedData = new HashMap<>();
 
-        } catch (Exception e) {
-            log.error("Failed to get document media", e);
-            return ApiResponse.error("Failed to get document media: " + e.getMessage());
+        switch (document.getType()) {
+            case NATIONAL_ID:
+                extractedData.put("documentType", "National ID");
+                extractedData.put("idNumber", "K" + System.currentTimeMillis() % 10000000);
+                extractedData.put("fullName", "TEMSAMANI Mouhcine");
+                extractedData.put("birthDate", "1988-11-29");
+                extractedData.put("expiryDate", "2029-09-09");
+                break;
+
+            case COMPANY_REGISTRATION:
+                extractedData.put("documentType", "Company Registration");
+                extractedData.put("companyName", document.getEkyc().getCompanyName());
+                extractedData.put("registrationNumber", "RC" + System.currentTimeMillis() % 1000000);
+                extractedData.put("establishedDate", LocalDate.now().minusYears(2));
+                extractedData.put("legalForm", "SARL");
+                break;
+
+            case BANK_STATEMENT:
+                extractedData.put("documentType", "Bank Statement");
+                extractedData.put("bankName", document.getEkyc().getBankName());
+                extractedData.put("accountNumber", document.getEkyc().getBankAccountNumber());
+                extractedData.put("statementMonth", LocalDate.now().getMonth());
+                extractedData.put("averageBalance", 50000 + (System.currentTimeMillis() % 100000));
+                extractedData.put("transactions", Arrays.asList(
+                        Map.of("date", "2025-01-15", "amount", 15000, "type", "CREDIT"),
+                        Map.of("date", "2025-01-20", "amount", -5000, "type", "DEBIT")
+                ));
+                break;
+
+            default:
+                extractedData.put("documentType", document.getType().toString());
+                extractedData.put("fileName", media.getOriginalFileName());
+                break;
         }
-    }
 
-    public ApiResponse<DocumentResponseDto> verifyDocument(Long documentId, String verificationNotes, Long adminId) {
+        // Convertir en JSON et sauvegarder
         try {
-            Optional<Document> documentOpt = documentRepository.findById(documentId);
-            if (documentOpt.isEmpty()) {
-                return ApiResponse.error("Document not found");
-            }
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
+            String jsonData = objectMapper.writeValueAsString(extractedData);
 
-            Document document = documentOpt.get();
-            document.setVerified(true);
-
-            document = documentRepository.save(document);
-
-            // Recalculate eKYC score
-            ekycService.calculateAndUpdateScore(document.getEkyc().getId());
-
-            // Find customer and send notification
-            Document finalDocument = document;
-            Optional<Customer> customerOpt = customerRepository.findAll().stream()
-                    .filter(c -> c.getEkyc() != null && c.getEkyc().getId().equals(finalDocument.getEkyc().getId()))
-                    .findFirst();
-
-            if (customerOpt.isPresent()) {
-                notificationService.createNotification(
-                        customerOpt.get().getId(),
-                        "Document Verified",
-                        String.format("Your %s document has been verified.", document.getType().toString()),
-                        "EMAIL"
-                );
-            }
-
-            DocumentResponseDto response = documentMapper.toDto(document);
-            return ApiResponse.success("Document verified successfully", response);
+            document.setExtractedData(jsonData);
+            document.setDataExtracted(true);
+            document.setDataExtractedAt(LocalDateTime.now());
 
         } catch (Exception e) {
-            log.error("Document verification failed", e);
-            return ApiResponse.error("Document verification failed: " + e.getMessage());
-        }
-    }
-
-    public ApiResponse<DocumentResponseDto> rejectDocument(Long documentId, String rejectionReason, Long adminId) {
-        try {
-            Optional<Document> documentOpt = documentRepository.findById(documentId);
-            if (documentOpt.isEmpty()) {
-                return ApiResponse.error("Document not found");
-            }
-
-            Document document = documentOpt.get();
-            document.setVerified(false);
-
-            document = documentRepository.save(document);
-
-            // Recalculate eKYC score
-            ekycService.calculateAndUpdateScore(document.getEkyc().getId());
-
-            // Find customer and send notification
-            Document finalDocument = document;
-            Optional<Customer> customerOpt = customerRepository.findAll().stream()
-                    .filter(c -> c.getEkyc() != null && c.getEkyc().getId().equals(finalDocument.getEkyc().getId()))
-                    .findFirst();
-
-            if (customerOpt.isPresent()) {
-                notificationService.createNotification(
-                        customerOpt.get().getId(),
-                        "Document Rejected",
-                        String.format("Your %s document has been rejected. Reason: %s",
-                                document.getType().toString(), rejectionReason),
-                        "EMAIL"
-                );
-            }
-
-            DocumentResponseDto response = documentMapper.toDto(document);
-            return ApiResponse.success("Document rejected successfully", response);
-
-        } catch (Exception e) {
-            log.error("Document rejection failed", e);
-            return ApiResponse.error("Document rejection failed: " + e.getMessage());
+            log.error("Erreur extraction données: {}", e.getMessage());
         }
     }
 }

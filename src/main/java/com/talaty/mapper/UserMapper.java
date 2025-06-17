@@ -7,7 +7,7 @@ import com.talaty.dto.response.CustomerResponseDto;
 import com.talaty.model.*;
 import org.mapstruct.*;
 
-@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING)
+@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING, uses = {EKYCMapper.class, MediaMapper.class})
 public interface UserMapper {
 
     // Admin Mappings

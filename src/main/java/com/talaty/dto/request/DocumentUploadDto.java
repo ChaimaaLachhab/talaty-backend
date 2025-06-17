@@ -18,16 +18,15 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DocumentUploadDto {
-    @NotNull(message = "Le type de document est obligatoire")
-    private DocumentType type;
+    @NotNull(message = "L'ID de l'eKYC est requis")
+    private Long ekycId;
 
-    @NotBlank(message = "Le nom du document est obligatoire")
-    private String name;
+    @NotNull(message = "Le type de document est requis")
+    private DocumentType documentType;
+
+    @NotBlank(message = "Le nom du document est requis")
+    private String documentName;
 
     private String description;
-
-    @NotEmpty(message = "Au moins un fichier est requis")
-    private List<MultipartFile> files;
-
-    private List<Media> documents;
+    private boolean required = false;
 }

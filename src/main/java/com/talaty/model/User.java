@@ -98,6 +98,15 @@ public abstract class User implements UserDetails {
         return firstName + " " + lastName;
     }
 
+    public void updateProfileCompletion() {
+        double completion = 0.0;
+
+        if (this.emailVerified) completion += 10;
+        if (this.phoneVerified) completion += 10;
+
+        this.profileCompletion = Math.min(completion, 100.0);
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));

@@ -10,6 +10,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +45,7 @@ public class EKYC {
 
     // Registration Information
     private String companyRegistrationNumber;
-    private LocalDateTime companyEstablishedDate;
+    private LocalDate companyEstablishedDate;
 
     // Banking Information
     @Column(length = 34) // IBAN format
@@ -61,6 +62,9 @@ public class EKYC {
     // Credit Application
     private Double requestedCreditAmount;
     private String creditPurpose;
+
+    @OneToOne(mappedBy = "ekyc")
+    private User user;
 
     @OneToMany(mappedBy = "ekyc", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Document> documents = new ArrayList<>();
@@ -87,15 +91,11 @@ public class EKYC {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    // Méthodes utilitaires
-    public void addDocument(Document document) {
-        documents.add(document);
-        document.setEkyc(this);
-    }
-
-    public void removeDocument(Document document) {
-        documents.remove(document);
-        document.setEkyc(null);
+    public void setUser(User user) {
+        this.user = user;
+        if (user != null && user.getEkyc() != this) {
+            user.setEkyc(this);
+        }
     }
 
     public Double getScorePercentage() {
@@ -108,11 +108,14 @@ public class EKYC {
     }
 
     public boolean areRequiredDocumentsSubmitted() {
-        return isDocumentSubmitted(DocumentType.NATIONAL_ID) &&
-                isDocumentSubmitted(DocumentType.COMPANY_REGISTRATION) &&
-                documents.stream()
-                        .filter(doc -> doc.getType() == DocumentType.BANK_STATEMENT)
-                        .mapToLong(doc -> doc.getMediaFiles().size())
-                        .sum() >= 3; // At least 3 months of bank statements
+        boolean hasNationalId = isDocumentSubmitted(DocumentType.NATIONAL_ID);
+        boolean hasCompanyReg = isDocumentSubmitted(DocumentType.COMPANY_REGISTRATION);
+
+        long bankStatements = documents.stream()
+                .filter(doc -> doc.getType() == DocumentType.BANK_STATEMENT)
+                .mapToLong(doc -> doc.getMediaFiles().size())
+                .sum();
+
+        return hasNationalId && hasCompanyReg && bankStatements >= 3;
     }
 }

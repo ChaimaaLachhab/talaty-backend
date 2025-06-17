@@ -7,22 +7,37 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class LoginResponse {
     private String token;
-    private long expiresIn;
-    private String userType;
+    private long expirationTime;
+    private String role;
     private Long userId;
     private String fullName;
     private boolean verified;
     private boolean phoneVerified;
     private boolean emailVerified;
-//    private boolean identityVerified;
     private Double profileCompletion;
-//    private String nextOnboardingStep;
-//    private boolean canApplyForCredit;
-//    private ApplicationStatus applicationStatus;
+    private List<String> nextSteps;
+
+    public LoginResponse(String token, long expirationTime, String role, Long userId,
+                         String fullName, boolean verified, boolean phoneVerified,
+                         boolean emailVerified, Double profileCompletion) {
+        this.token = token;
+        this.expirationTime = expirationTime;
+        this.role = role;
+        this.userId = userId;
+        this.fullName = fullName;
+        this.verified = verified;
+        this.phoneVerified = phoneVerified;
+        this.emailVerified = emailVerified;
+        this.profileCompletion = profileCompletion;
+        this.nextSteps = new ArrayList<>();
+    }
 }

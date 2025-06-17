@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class MediaResponseDto {
     private Long id;
+    private String mediaId;
     private String mediaUrl;
     private String originalFileName;
     private String mimeType;

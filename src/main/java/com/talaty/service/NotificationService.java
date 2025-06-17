@@ -53,7 +53,7 @@ public class NotificationService {
             }
 
             NotificationResponseDto response = notificationMapper.toDto(notification);
-            return ApiResponse.success("Notification created successfully", response);
+            return ApiResponse.success(response, "Notification created successfully");
 
         } catch (Exception e) {
             log.error("Notification creation failed", e);

@@ -171,6 +171,6 @@ public class MediaService {
      * Get media by mediaType for a document
      */
     public List<Media> getDocumentMediaByType(Long documentId, MediaType mediaType) {
-        return mediaRepository.findByDocumentIdAndTypeOrderByUploadedAtDesc(documentId, mediaType);
+        return mediaRepository.findByDocumentIdAndMediaTypeOrderByUploadedAtDesc(documentId, mediaType);
     }
 }

@@ -11,7 +11,7 @@ import java.util.Optional;
 @Repository
 public interface MediaRepository extends JpaRepository<Media, Long> {
     List<Media> findByDocumentIdOrderByUploadedAtDesc(Long documentId);
-    List<Media> findByTypeAndDocumentId(MediaType mediaType, Long documentId);
+    List<Media> findByMediaTypeAndDocumentId(MediaType mediaType, Long documentId);
     Optional<Media> findByMediaId(String mediaId);
-    List<Media> findByDocumentIdAndTypeOrderByUploadedAtDesc(Long documentId, MediaType mediaType);
+    List<Media> findByDocumentIdAndMediaTypeOrderByUploadedAtDesc(Long documentId, MediaType mediaType);
 }

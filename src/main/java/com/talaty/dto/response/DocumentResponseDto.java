@@ -20,11 +20,13 @@ public class DocumentResponseDto {
     private String description;
     private boolean required;
     private boolean verified;
-    private boolean dataExtracted;
     private String processingNotes;
     private LocalDateTime processedAt;
-    private List<MediaResponseDto> mediaFiles;
-    private ExtractedDataDto extractedData;
+    private Long processedBy;
+    private String extractedData;
+    private boolean dataExtracted;
+    private LocalDateTime dataExtractedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private List<MediaResponseDto> mediaFiles;
 }
