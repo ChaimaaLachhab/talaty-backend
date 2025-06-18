@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,11 +25,10 @@ public class EKYCController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<EKYCResponseDto>> createOrUpdateEKYC(
-            Authentication authentication,
+            @AuthenticationPrincipal User user,
             @Valid @RequestBody EKYCRequestDto request) {
 
-        Long userId = ((User) authentication.getPrincipal()).getId();
-        ApiResponse<EKYCResponseDto> response = ekycService.createOrUpdateEKYC(userId, request);
+        ApiResponse<EKYCResponseDto> response = ekycService.createOrUpdateEKYC(user.getId(), request);
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)
@@ -37,11 +37,10 @@ public class EKYCController {
 
     @PostMapping("/{ekycId}/submit")
     public ResponseEntity<ApiResponse<EKYCResponseDto>> submitEKYC(
-            Authentication authentication,
+            @AuthenticationPrincipal User user,
             @PathVariable Long ekycId) {
 
-        Long userId = ((User) authentication.getPrincipal()).getId();
-        ApiResponse<EKYCResponseDto> response = ekycService.submitEKYC(userId, ekycId);
+        ApiResponse<EKYCResponseDto> response = ekycService.submitEKYC(user.getId(), ekycId);
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)

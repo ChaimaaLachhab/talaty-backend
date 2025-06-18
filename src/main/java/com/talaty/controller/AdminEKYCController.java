@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -45,12 +46,11 @@ public class AdminEKYCController {
 
     @PutMapping("/{ekycId}/review")
     public ResponseEntity<ApiResponse<EKYCResponseDto>> reviewEKYC(
-            Authentication authentication,
+            @AuthenticationPrincipal User user,
             @PathVariable Long ekycId,
             @Valid @RequestBody AdminReviewDto reviewDto) {
 
-        Long adminId = ((User) authentication.getPrincipal()).getId();
-        ApiResponse<EKYCResponseDto> response = adminEKYCService.reviewEKYC(adminId, ekycId, reviewDto);
+        ApiResponse<EKYCResponseDto> response = adminEKYCService.reviewEKYC(user.getId(), ekycId, reviewDto);
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)
@@ -59,13 +59,12 @@ public class AdminEKYCController {
 
     @PutMapping("/document/{documentId}/verify")
     public ResponseEntity<ApiResponse<String>> verifyDocument(
-            Authentication authentication,
+            @AuthenticationPrincipal User user,
             @PathVariable Long documentId,
             @RequestParam boolean verified,
             @RequestParam(required = false) String notes) {
 
-        Long adminId = ((User) authentication.getPrincipal()).getId();
-        ApiResponse<String> response = adminEKYCService.verifyDocument(adminId, documentId, verified, notes);
+        ApiResponse<String> response = adminEKYCService.verifyDocument(user.getId(), documentId, verified, notes);
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)

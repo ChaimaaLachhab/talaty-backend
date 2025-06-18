@@ -56,7 +56,7 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initializeTestCustomer() {
-        if (!userRepository.findByEmail("test@talaty.ma").isPresent()) {
+        if (!userRepository.findByEmail("chaima.lac013@gmail.com").isPresent()) {
             Customer customer = new Customer();
             customer.setFirstName("Chaimaa");
             customer.setLastName("LACHHAB");

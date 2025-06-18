@@ -7,6 +7,7 @@ import com.talaty.service.NotificationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,11 +25,10 @@ public class NotificationController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<NotificationResponseDto>>> getMyNotifications(
-            Authentication authentication,
+            @AuthenticationPrincipal User user,
             @RequestParam(value = "unreadOnly", defaultValue = "false") boolean unreadOnly) {
 
-        Long userId = ((User) authentication.getPrincipal()).getId();
-        ApiResponse<List<NotificationResponseDto>> response = notificationService.getUserNotifications(userId, unreadOnly);
+        ApiResponse<List<NotificationResponseDto>> response = notificationService.getUserNotifications(user.getId(), unreadOnly);
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)
@@ -36,9 +36,8 @@ public class NotificationController {
     }
 
     @GetMapping("/unread")
-    public ResponseEntity<ApiResponse<List<NotificationResponseDto>>> getUnreadNotifications(Authentication authentication) {
-        Long userId = ((User) authentication.getPrincipal()).getId();
-        ApiResponse<List<NotificationResponseDto>> response = notificationService.getUserNotifications(userId, true);
+    public ResponseEntity<ApiResponse<List<NotificationResponseDto>>> getUnreadNotifications(@AuthenticationPrincipal User user) {
+        ApiResponse<List<NotificationResponseDto>> response = notificationService.getUserNotifications(user.getId(), true);
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)
@@ -47,11 +46,10 @@ public class NotificationController {
 
     @PutMapping("/{notificationId}/read")
     public ResponseEntity<ApiResponse<String>> markAsRead(
-            Authentication authentication,
+            @AuthenticationPrincipal User user,
             @PathVariable Long notificationId) {
 
-        Long userId = ((User) authentication.getPrincipal()).getId();
-        ApiResponse<String> response = notificationService.markAsRead(notificationId, userId);
+        ApiResponse<String> response = notificationService.markAsRead(notificationId, user.getId());
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)
@@ -59,9 +57,8 @@ public class NotificationController {
     }
 
     @PutMapping("/mark-all-read")
-    public ResponseEntity<ApiResponse<String>> markAllAsRead(Authentication authentication) {
-        Long userId = ((User) authentication.getPrincipal()).getId();
-        ApiResponse<String> response = notificationService.markAllAsRead(userId);
+    public ResponseEntity<ApiResponse<String>> markAllAsRead(@AuthenticationPrincipal User user) {
+        ApiResponse<String> response = notificationService.markAllAsRead(user.getId());
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)
@@ -69,9 +66,8 @@ public class NotificationController {
     }
 
     @GetMapping("/unread/count")
-    public ResponseEntity<ApiResponse<Long>> getUnreadCount(Authentication authentication) {
-        Long userId = ((User) authentication.getPrincipal()).getId();
-        ApiResponse<Long> response = notificationService.getUnreadCount(userId);
+    public ResponseEntity<ApiResponse<Long>> getUnreadCount(@AuthenticationPrincipal User user) {
+        ApiResponse<Long> response = notificationService.getUnreadCount(user.getId());
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)
